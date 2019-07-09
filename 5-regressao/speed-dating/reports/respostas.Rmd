@@ -1,0 +1,32 @@
+---
+title: "Respostas"
+author: "Helisson"
+date: "9 de julho de 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+library(tidyverse)
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Regressão Romântica
+## L4P3
+
+## Que fatores afetam as chances de um casal ter match?
+
+```{r}
+## Importando CSV e removendo NA's
+data <- read_csv('../speed-dating.csv', col_types = "") %>% 
+  mutate_all(funs(replace(., is.na(.), 0)))
+
+head(data)
+```
+```{r}
+## Correlacao
+
+
+```
+
