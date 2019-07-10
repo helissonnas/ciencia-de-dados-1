@@ -6,8 +6,10 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-
+library(broom)
 library(tidyverse)
+library(ggplot2)
+library(GGally)
 
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -17,16 +19,90 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Que fatores afetam as chances de um casal ter match?
 
-```{r}
+Temos dados descrevendo 5000 encontros relâmpagos (speed dating, procura no google) de 4 minutos envolvendo 310 jovens americanos.
+
+Aqui, queremos identificar quais fatores afetam na possibilidade e acontecer um segundo encontro, ou seja, fatores que influenciam na existência da "química" no encontro.
+
+```{r message=FALSE, warning=FALSE}
 ## Importando CSV e removendo NA's
-data <- read_csv('../speed-dating.csv', col_types = "") %>% 
-  mutate_all(funs(replace(., is.na(.), 0)))
+speed_dating <- read_csv('../speed-dating2.csv', col_types = "")
 
-head(data)
+
+head(speed_dating)
 ```
-```{r}
-## Correlacao
 
+Primeiramente, devemos dedicar um tempo para entender a natureza dos dados que temos a disposição. Entre as colunas que o _dataset_ tem, vamos destacar algumas para exploração:
+
+* age_o : idade de p2
+* age : idade de p1
+* int_corr : correlação entre os interesses de p1 e p2
+* like : no geral, quanto p1 gostou de p2
+* attr : quão atraente p1 achou p2
+* fun : quão divertido p1 achou p2
+
+Partimos da hipótese de que a diferença de idade pode ser um fator relevante para o _match_, e a correlação de interesses vai definir ainda mais a possibilidade de um segundo encontro. E claro, se a pessoa for atraente e divertida, é provável que exista um maior interesse. Sendo assim, vamos focar nessas variáveis e checar se as nossas hipóteses podem ajudar a formar um modelo interessante. Para isso, precisamos filtrar essas variáveis e checar a sua correlação.
+
+Sabendo que a coluna `dec` diz se ouve ou não um segundo encontro entre o participante 1 e o participante 2, precisamos ajusta-la para valores numéricos para construir nosso modelo mais a frente.
+
+```{r}
+speed_dating <- speed_dating %>%
+    select(dec, age, age_o, int_corr, fun, attr, prob) %>% mutate(
+         dec = case_when( .$dec == "no" ~ 0,
+                          .$dec == "yes" ~ 1))
+```
+
+### Correlação
+
+```{r message=FALSE, warning=FALSE}
+
+ggpairs(speed_dating  %>%
+    select(age, age_o, int_corr, fun, attr))
+
+```
+
+Não existe correlação forte entre as variáveis que foram selecionadas.
+
+### Explorndo um pouco mais
+
+Mas, será que a correlação de interesses é, de fato, algo que pesa no encontro?
+
+```{r warning=FALSE}
+ggplot(data=speed_dating, aes(x = int_corr, y = prob)) +
+  geom_bar(stat="identity", fill="slategray") +
+  labs(x= "Correlação de Interesses",
+       y = "Probabilidade de Novo Encontro (%)")
+```
+
+E a diferença de idade entre p1 e p2?
+
+```{r warning=FALSE}
+
+speed_dating <- speed_dating %>% mutate(diff_age = age - age_o)
+
+ggplot(data=speed_dating, aes(x = diff_age, y = prob/25)) +
+  geom_bar(stat="identity", fill="steelblue") +
+  labs(x= "Diferença de idade",
+       y = "Probabilidade de Novo Encontro (%)")
+```
+Para o caso da atração e da percepção de o quanto a pessoa é divertida.
+
+```{r warning=FALSE}
+ggplot(data=speed_dating, aes(x = attr, y = fun)) +
+  geom_bar(stat="identity", fill="springgreen3") +
+  labs(x= "Índice de Atração",
+       y = "Percepção de Diversão")
+```
+
+Agora, partiremos para o modelo.
+
+## O modelo
+
+Utilizaremos uma regressão logística com o modelo baseado nas nossas explorações dos dados.
+```{r}
+
+model <- glm(dec ~ fun + attr + diff_age + int_corr, data = speed_dating, family = "binomial")
+
+tidy(model, conf.int = TRUE, conf.level = 0.95, exp = T)
 
 ```
 
